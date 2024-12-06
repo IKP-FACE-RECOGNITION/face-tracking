@@ -231,7 +231,7 @@ async def recognize(detector, args):
     tracker = BYTETracker(args=args, frame_rate=30)
     frame_id = 0
 
-    cap = cv2.VideoCapture(cv2.CAP_DSHOW)
+    cap = cv2.VideoCapture(0)
     while True:
         
         _, img = cap.read()
