@@ -256,7 +256,7 @@ async def recognize(detector, args):
                 
                 if mapping_score > 0.9:
                     face_alignment = norm_crop(img=data_mapping["raw_image"],  landmark=data_mapping["detection_landmarks"][j])
-
+                    cv2.imshow("Transformed Image", face_alignment)
                     # score, name = recognition(face_image=face_alignment)
                     # print("score: ", score)
                     # if name is not None:
