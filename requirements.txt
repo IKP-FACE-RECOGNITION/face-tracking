@@ -43,3 +43,4 @@ httpx
 asyncio
 torchvision
 thop
+python-dotenv

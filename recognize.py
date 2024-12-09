@@ -1,6 +1,7 @@
 import threading
 import time
 import os
+import json
 
 import cv2
 import numpy as np
@@ -19,8 +20,14 @@ from face_tracking.tracker.byte_tracker import BYTETracker
 from face_tracking.tracker.visualize import plot_tracking
 
 import asyncio
+
+from dotenv import load_dotenv
+
 # Config OS Env
 os.environ["COMMANDLINE_ARGS"] = '--precision full --no-half'
+
+# Load environment variables from the .env file (if present)
+load_dotenv()
 
 # Device configuration
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -219,6 +226,11 @@ async def call_deepface_service(url, files):
     async with httpx.AsyncClient() as client:
         response = await client.post(url, files=files)
         return response.json()  # Ensure JSON response is returned correctly
+    
+async def call_compreface_service(url,file,headers):
+    async with httpx.AsyncClient() as client:
+        response = await client.post(url, headers=headers, files=file)
+        return response.json()  # Ensure JSON response is returned correctly
 
 async def recognize(detector, args):
     """Face recognition in a separate thread."""
@@ -271,23 +283,35 @@ async def recognize(detector, args):
                     if not success:
                         continue
                     img_bytes = encoded_img.tobytes()
-                    url = "http://10.1.0.150:8088/recognize-face/?model_name=SFace&detector_backend=yunet&distance_metric=cosine&align=true"
+                    # url = "http://10.1.0.150:8088/recognize-face/?model_name=SFace&detector_backend=yunet&distance_metric=cosine&align=true"
+                    # files = {
+                    #     'img': ('result.jpg', img_bytes, 'image/jpeg')
+                    #     }
+                    # res = await call_deepface_service(url,files)
+                    url = os.getenv('COMPARE_API_ENDPOINT') + "/api/v1/recognition/recognize?face_plugins=landmarks"
+                    api_key = os.getenv('API_KEY')
                     files = {
-                        'img': ('result.jpg', img_bytes, 'image/jpeg')
+                        'file': ('result.jpg', img_bytes, 'image/jpeg')
                         }
-                    res = await call_deepface_service(url,files)
+                    headers = {
+                        'x-api-key': api_key
+                    }
+                    res = await call_compreface_service(url=url,headers=headers,file=files)
                     print("Response: ",res)
-                    if res.get("user_name") != "": 
-                        caption = res.get("user_name")
+                    
+
+                    if res.get("result") :
+                        print("res.get(subjects)",res.get("result")[0].get("subjects"))
+                        if len(res.get("result")[0].get("subjects")) >0 and res.get("result")[0].get("subjects")[0].get("similarity") >=0.9: 
+                            caption = res.get("result")[0].get("subjects")[0].get("subject")
+                            id_face_mapping[data_mapping["tracking_ids"][i]]  = caption
+                            print ("caption: ", caption)
+                            data_mapping["detection_bboxes"] = np.delete(data_mapping["detection_bboxes"], j, axis=0)
+                            data_mapping["detection_landmarks"] = np.delete(data_mapping["detection_landmarks"], j, axis=0)
+                        else:
+                            caption = "UN_KNOWN"
                     else:
-                        caption = "UN_KNOWN"
-                
-                    id_face_mapping[data_mapping["tracking_ids"][i]]  = caption
-
-                    data_mapping["detection_bboxes"] = np.delete(data_mapping["detection_bboxes"], j, axis=0)
-                    data_mapping["detection_landmarks"] = np.delete(data_mapping["detection_landmarks"], j, axis=0)
-
-
+                        print("Error Response: ", res)
                     break
 
         if not data_mapping["tracking_bboxes"]:
