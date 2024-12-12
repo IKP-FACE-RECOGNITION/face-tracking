@@ -268,7 +268,7 @@ async def recognize(detector, args):
                 
                 if mapping_score > 0.9:
                     face_alignment = norm_crop(img=data_mapping["raw_image"],  landmark=data_mapping["detection_landmarks"][j])
-                    cv2.imshow("Transformed Image", face_alignment)
+                    # cv2.imshow("Transformed Image", face_alignment)
                     # score, name = recognition(face_image=face_alignment)
                     # print("score: ", score)
                     # if name is not None:
@@ -302,7 +302,7 @@ async def recognize(detector, args):
 
                     if res.get("result") :
                         print("res.get(subjects)",res.get("result")[0].get("subjects"))
-                        if len(res.get("result")[0].get("subjects")) >0 and res.get("result")[0].get("subjects")[0].get("similarity") >=0.9: 
+                        if len(res.get("result")[0].get("subjects")) >0 and res.get("result")[0].get("subjects")[0].get("similarity") >=0.95: 
                             caption = res.get("result")[0].get("subjects")[0].get("subject")
                             id_face_mapping[data_mapping["tracking_ids"][i]]  = caption
                             print ("caption: ", caption)
