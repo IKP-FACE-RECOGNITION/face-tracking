@@ -56,6 +56,8 @@ data_mapping = {
     "tracking_bboxes": [],
 }
 
+current_objId = list(data_mapping["tracking_ids"])
+
 
 def load_config(file_name):
     """
@@ -238,6 +240,7 @@ async def recognize(detector, args):
     start_time = time.time_ns()
     frame_count = 0
     fps = -1
+    count = 0
 
     # Initialize a tracker and a timer
     tracker = BYTETracker(args=args, frame_rate=15)
@@ -248,10 +251,11 @@ async def recognize(detector, args):
     cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
     cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
     while True:
+        count = count+1
         
         _, img = cap.read()
         
-
+        current_objId = list(data_mapping["tracking_ids"])
         tracking_image = process_tracking(img, detector, tracker, args, frame_id, fps)
         # print("data_mapping: ", data_mapping)
 
@@ -271,7 +275,7 @@ async def recognize(detector, args):
                 
                 if mapping_score > 0.9:
                     face_alignment = norm_crop(img=data_mapping["raw_image"],  landmark=data_mapping["detection_landmarks"][j])
-                    cv2.imshow("Transformed Image", face_alignment)
+                    # cv2.imshow("Transformed Image", face_alignment)
                     # score, name = recognition(face_image=face_alignment)
                     # print("score: ", score)
                     # if name is not None:
@@ -282,7 +286,7 @@ async def recognize(detector, args):
                     
                     # transform to img bytes
                     success, encoded_img = cv2.imencode('.jpg', face_alignment)
-                    print(encoded_img)
+                    # print(encoded_img)
                     if not success:
                         continue
                     img_bytes = encoded_img.tobytes()
@@ -299,23 +303,23 @@ async def recognize(detector, args):
                     headers = {
                         'x-api-key': api_key
                     }
-                    res = await call_compreface_service(url=url,headers=headers,file=files)
-                    print("Response: ",res)
+                    # res = ""
+                    if count%15 ==0 :
+                        res = await call_compreface_service(url=url,headers=headers,file=files)
                     
-
-                    if res.get("result") :
-                        print("res.get(subjects)",res.get("result")[0].get("subjects"))
-                        if len(res.get("result")[0].get("subjects")) >0 and res.get("result")[0].get("subjects")[0].get("similarity") >=0.95: 
-                            caption = res.get("result")[0].get("subjects")[0].get("subject")
-                            id_face_mapping[data_mapping["tracking_ids"][i]]  = caption
-                            print ("caption: ", caption)
-                            data_mapping["detection_bboxes"] = np.delete(data_mapping["detection_bboxes"], j, axis=0)
-                            data_mapping["detection_landmarks"] = np.delete(data_mapping["detection_landmarks"], j, axis=0)
+                        if res.get("result") :
+                            print("res.get(subjects)",res.get("result")[0].get("subjects"))
+                            if len(res.get("result")[0].get("subjects")) >0 and res.get("result")[0].get("subjects")[0].get("similarity") >=0.97: 
+                                caption = res.get("result")[0].get("subjects")[0].get("subject")
+                                id_face_mapping[data_mapping["tracking_ids"][i]]  = caption
+                                print ("caption: ", caption)
+                                data_mapping["detection_bboxes"] = np.delete(data_mapping["detection_bboxes"], j, axis=0)
+                                data_mapping["detection_landmarks"] = np.delete(data_mapping["detection_landmarks"], j, axis=0)
+                            else:
+                                caption = "UN_KNOWN"
                         else:
-                            caption = "UN_KNOWN"
-                    else:
-                        print("Error Response: ", res)
-                    break
+                            print("Error Response: ", res)
+                        break
 
         if not data_mapping["tracking_bboxes"]:
             print("Waiting for a person...")
