@@ -240,10 +240,13 @@ async def recognize(detector, args):
     fps = -1
 
     # Initialize a tracker and a timer
-    tracker = BYTETracker(args=args, frame_rate=30)
+    tracker = BYTETracker(args=args, frame_rate=15)
     frame_id = 0
 
     cap = cv2.VideoCapture(0)
+    
+    cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
     while True:
         
         _, img = cap.read()
@@ -268,7 +271,7 @@ async def recognize(detector, args):
                 
                 if mapping_score > 0.9:
                     face_alignment = norm_crop(img=data_mapping["raw_image"],  landmark=data_mapping["detection_landmarks"][j])
-                    # cv2.imshow("Transformed Image", face_alignment)
+                    cv2.imshow("Transformed Image", face_alignment)
                     # score, name = recognition(face_image=face_alignment)
                     # print("score: ", score)
                     # if name is not None:
