@@ -44,3 +44,4 @@ asyncio
 torchvision
 thop
 python-dotenv
+pymongo

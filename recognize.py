@@ -8,6 +8,7 @@ import numpy as np
 import torch
 import yaml
 from torchvision import transforms
+from datetime import datetime
 
 import httpx
 
@@ -23,8 +24,11 @@ import asyncio
 
 from dotenv import load_dotenv
 
+from db.mongo_connect import initialize_mongo_connection
+
 # Config OS Env
 os.environ["COMMANDLINE_ARGS"] = '--precision full --no-half'
+os.environ['KMP_DUPLICATE_LIB_OK']='True'
 
 # Load environment variables from the .env file (if present)
 load_dotenv()
@@ -57,6 +61,8 @@ data_mapping = {
 }
 
 current_objId = list(data_mapping["tracking_ids"])
+
+people = []
 
 
 def load_config(file_name):
@@ -227,12 +233,27 @@ def mapping_bbox(box1, box2):
 async def call_deepface_service(url, files):
     async with httpx.AsyncClient() as client:
         response = await client.post(url, files=files)
-        return response.json()  # Ensure JSON response is returned correctly
+        if response :            
+            return response.json()  # Ensure JSON response is returned correctly
+        else:
+            return {}
     
 async def call_compreface_service(url,file,headers):
     async with httpx.AsyncClient() as client:
         response = await client.post(url, headers=headers, files=file)
-        return response.json()  # Ensure JSON response is returned correctly
+        if response :            
+            return response.json()  # Ensure JSON response is returned correctly
+        else:
+            return {}
+    
+async def call_time_attendance_service(url,payload,headers):
+    async with httpx.AsyncClient() as client:
+        response = await client.post(url, json=payload, headers=headers)
+        # response.raise_for_status()  # Raise an error for HTTP errors
+        if response :            
+            return response.json()  # Ensure JSON response is returned correctly
+        else:
+            return {}
 
 async def recognize(detector, args):
     """Face recognition in a separate thread."""
@@ -243,13 +264,26 @@ async def recognize(detector, args):
     count = 0
 
     # Initialize a tracker and a timer
-    tracker = BYTETracker(args=args, frame_rate=15)
+    tracker = BYTETracker(args=args, frame_rate=30)
     frame_id = 0
 
-    cap = cv2.VideoCapture(0)
+    cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
+
     
-    cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
-    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+    cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1920)
+    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 1080)
+    
+    # Verify the settings
+    print("Width:", cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+    print("Height:", cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    print("FPS:", cap.get(cv2.CAP_PROP_FPS))
+
+    
+    uri = os.getenv("ATTENDANCE_DB_URI")
+    db_name = "Attendance"
+    db = initialize_mongo_connection(uri,db_name)
+    attendance_collection = db["attendance"]
+    
     while True:
         count = count+1
         
@@ -263,6 +297,7 @@ async def recognize(detector, args):
         frame_count += 1
         if frame_count >= 30:
             fps = 1e9 * frame_count / (time.time_ns() - start_time)
+            
             frame_count = 0
             start_time = time.time_ns()
 
@@ -304,22 +339,75 @@ async def recognize(detector, args):
                         'x-api-key': api_key
                     }
                     # res = ""
-                    if count%15 ==0 :
-                        res = await call_compreface_service(url=url,headers=headers,file=files)
+                    # if count%100 ==0 :
+                    #     res = await call_compreface_service(url=url,headers=headers,file=files)
                     
-                        if res.get("result") :
-                            print("res.get(subjects)",res.get("result")[0].get("subjects"))
-                            if len(res.get("result")[0].get("subjects")) >0 and res.get("result")[0].get("subjects")[0].get("similarity") >=0.97: 
-                                caption = res.get("result")[0].get("subjects")[0].get("subject")
-                                id_face_mapping[data_mapping["tracking_ids"][i]]  = caption
-                                print ("caption: ", caption)
-                                data_mapping["detection_bboxes"] = np.delete(data_mapping["detection_bboxes"], j, axis=0)
-                                data_mapping["detection_landmarks"] = np.delete(data_mapping["detection_landmarks"], j, axis=0)
-                            else:
-                                caption = "UN_KNOWN"
-                        else:
-                            print("Error Response: ", res)
-                        break
+                    #     if res.get("result") :
+                    #         print("res.get(subjects)",res.get("result")[0].get("subjects"))
+                    #         if len(res.get("result")[0].get("subjects")) >0 and res.get("result")[0].get("subjects")[0].get("similarity") >=0.96: 
+                    #             caption = res.get("result")[0].get("subjects")[0].get("subject")
+                    #             id_face_mapping[data_mapping["tracking_ids"][i]]  = caption
+                    #             print ("caption: ", caption)
+                    #             data_mapping["detection_bboxes"] = np.delete(data_mapping["detection_bboxes"], j, axis=0)
+                    #             data_mapping["detection_landmarks"] = np.delete(data_mapping["detection_landmarks"], j, axis=0)
+                                
+                                
+                                
+                                
+                    #             if caption not in people:
+                    #                 attendance_check = attendance_collection.find_one({"pid": caption})
+                    #                 print("attendance_check",attendance_check)
+                                    
+                    #                 if not attendance_check:
+                    #                     # Get the current date and time
+                    #                     now = datetime.now()
+
+                    #                     # Format the date as 'YYYY-MM-DD'
+                    #                     formatted_date = now.strftime('%Y-%m-%d')
+
+                    #                     # Format the time as 'HH:MM'
+                    #                     formatted_time = now.strftime('%H:%M')
+                    #                     print("==== Add Schedule ====")
+                    #                     attendance = {
+                    #                         "pid": caption,
+                    #                         "attendanceDate": formatted_date,
+                    #                         "startWorkTime": formatted_time
+                    #                     }
+                                        
+                    #                     attendace_result = attendance_collection.insert_one(attendance)
+                    #                     print(f"Inserted document with ID: {attendace_result.inserted_id}")
+                                
+                    #             # if caption not in people:
+                    #             #     # Get the current date and time
+                    #             #     now = datetime.now()
+
+                    #             #     # Format the date as 'YYYY-MM-DD'
+                    #             #     formatted_date = now.strftime('%Y-%m-%d')
+
+                    #             #     # Format the time as 'HH:MM'
+                    #             #     formatted_time = now.strftime('%H:%M')
+                    #             #     attendance_url = os.getenv('ATTENDANCE_URL') + "/TxGeTimeAttendance/import"
+                    #             #     attendance_headers = {
+                    #             #         'accept': '*/*',
+                    #             #         'Content-Type': 'application/json-patch+json'
+                    #             #         }
+                    #             #     payload = json.dumps({
+                    #             #         "pid": caption,
+                    #             #         "deviceId": "FACE_RECOG_01",
+                    #             #         "attendanceDate": formatted_date,
+                    #             #         "startWorkTime": formatted_time,
+                    #             #         "getOffWorkTime": None
+                    #             #         })
+                    #             #     print(payload)
+                    #             #     await call_time_attendance_service(attendance_url,payload,attendance_headers)
+                    #             #     people.append(caption)
+                                
+                    #         else:
+                    #             caption = "UN_KNOWN"
+                    #             print ("caption: ", caption)
+                    #     else:
+                    #         print("Error Response: ", res)
+                    #     break
 
         if not data_mapping["tracking_bboxes"]:
             print("Waiting for a person...")
@@ -328,12 +416,15 @@ async def recognize(detector, args):
         ch = cv2.waitKey(1)
         if ch == 27 or ch == ord("q") or ch == ord("Q"):
             break
+    cap.release()
+    cv2.destroyAllWindows()
 
 
 def main():
     # """Main function to start face tracking and recognition threads."""
     file_name = "./face_tracking/config/config_tracking.yaml"
     config_tracking = load_config(file_name)
+    print("config_tracking: ",config_tracking)
 
     asyncio.run(recognize(detector, config_tracking))
 

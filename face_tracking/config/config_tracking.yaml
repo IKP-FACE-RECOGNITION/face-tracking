@@ -1,4 +1,4 @@
-device: cpu
+device: cuda
 fps: 15
 match_thresh: 0.8
 min_box_area: 10

@@ -167,6 +167,7 @@ class BYTETracker(object):
         self.kalman_filter = KalmanFilter()
 
     def update(self, output_results, img_info, img_size):
+        output_results = output_results.cpu()
         self.frame_id += 1
         activated_starcks = []
         refind_stracks = []
