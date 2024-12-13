@@ -267,7 +267,8 @@ async def recognize(detector, args):
     tracker = BYTETracker(args=args, frame_rate=30)
     frame_id = 0
 
-    cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
+    # cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
+    cap = cv2.VideoCapture(0)
 
     
     cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1920)
@@ -307,15 +308,15 @@ async def recognize(detector, args):
         
         cv2.imshow("Face Recognition", tracking_image)
         
-        # Get current window size
-        window_width, window_height = cv2.getWindowImageRect("Face Recognition")[2:4]
-        print(f"window_width: {window_width}, window_height: {window_height}")
+        # # Get current window size
+        # window_width, window_height = cv2.getWindowImageRect("Face Recognition")[2:4]
+        # print(f"window_width: {window_width}, window_height: {window_height}")
         
             # Calculate the center position to move the window
-        window_x = (window_width - cap.get(cv2.CAP_PROP_FRAME_WIDTH)) // 2
-        window_y = (window_height - cap.get(cv2.CAP_PROP_FRAME_HEIGHT)) // 2
+        # window_x = (window_width - cap.get(cv2.CAP_PROP_FRAME_WIDTH)) // 2
+        # window_y = (window_height - cap.get(cv2.CAP_PROP_FRAME_HEIGHT)) // 2
         
-        cv2.moveWindow("Face Recognition", int(window_x), int(window_y))
+        # cv2.moveWindow("Face Recognition", int(window_x), int(window_y))
         
 
         for i in range(len(data_mapping["tracking_bboxes"])):
