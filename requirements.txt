@@ -45,3 +45,4 @@ torchvision
 thop
 python-dotenv
 pymongo
+screeninfo

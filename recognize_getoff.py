@@ -26,6 +26,7 @@ from dotenv import load_dotenv
 
 from db.mongo_connect import initialize_mongo_connection
 
+
 # Config OS Env
 os.environ["COMMANDLINE_ARGS"] = '--precision full --no-half'
 os.environ['KMP_DUPLICATE_LIB_OK']='True'
@@ -317,6 +318,7 @@ async def recognize(detector, args):
         
         cv2.moveWindow("Face Recognition", int(window_x), int(window_y))
         
+        
 
         for i in range(len(data_mapping["tracking_bboxes"])):
             for j in range(len(data_mapping["detection_bboxes"])):
@@ -364,31 +366,8 @@ async def recognize(detector, args):
                                 print ("caption: ", caption)
                                 data_mapping["detection_bboxes"] = np.delete(data_mapping["detection_bboxes"], j, axis=0)
                                 data_mapping["detection_landmarks"] = np.delete(data_mapping["detection_landmarks"], j, axis=0)
-
-                                # if caption not in people:
-                                #     # Get the current date and time
-                                #     now = datetime.now()
-
-                                #     # Format the date as 'YYYY-MM-DD'
-                                #     formatted_date = now.strftime('%Y-%m-%d')
-
-                                #     # Format the time as 'HH:MM'
-                                #     formatted_time = now.strftime('%H:%M')
-                                #     attendance_check = attendance_collection.find_one({"pid": caption, "attendanceDate": formatted_date})
-                                #     print("attendance_check",attendance_check)
-
-                                    
-                                #     if not attendance_check:
-                                        
-                                #         print("==== Add Schedule ====")
-                                #         attendance = {
-                                #             "pid": caption,
-                                #             "attendanceDate": formatted_date,
-                                #             "startWorkTime": formatted_time
-                                #         }
-                                        
-                                #         attendace_result = attendance_collection.insert_one(attendance)
-                                #         print(f"Inserted document with ID: {attendace_result.inserted_id}")
+                                                             
+                                
                                 
                                 if caption not in people:
                                     # Get the current date and time
@@ -399,21 +378,56 @@ async def recognize(detector, args):
 
                                     # Format the time as 'HH:MM'
                                     formatted_time = now.strftime('%H:%M')
-                                    attendance_url = os.getenv('ATTENDANCE_URL') + "/TxGeTimeAttendance/import"
-                                    attendance_headers = {
-                                        'accept': '*/*',
-                                        'Content-Type': 'application/json-patch+json'
+                                    attendance_filter = {"pid": caption, "attendanceDate": formatted_date}
+                                    attendance_check = attendance_collection.find_one(attendance_filter)
+                                    print("attendance_check",attendance_check)
+
+                                    
+                                    if not attendance_check:
+                                        
+                                        print("==== Add Schedule ====")
+                                        attendance = {
+                                            "pid": caption,
+                                            "attendanceDate": formatted_date,
+                                            "startWorkTime": None,
+                                            "getOffWorkTime": formatted_time
                                         }
-                                    payload = json.dumps({
-                                        "pid": caption,
-                                        "deviceId": "FACE_RECOG_01",
-                                        "attendanceDate": formatted_date,
-                                        "startWorkTime": formatted_time,
-                                        "getOffWorkTime": formatted_time
-                                        })
-                                    print(payload)
-                                    await call_time_attendance_service(attendance_url,payload,attendance_headers)
-                                    people.append(caption)
+                                        
+                                        attendace_result = attendance_collection.insert_one(attendance)
+                                        print(f"Inserted document with ID: {attendace_result.inserted_id}")
+                                    elif not attendance_check["getOffWorkTime"]:
+                                        print("==== Update Schedule ====")
+                                        attendance = {
+                                            "getOffWorkTime": formatted_time
+                                        }
+                                        
+                                        attendace_result = attendance_collection.update_one(attendance_filter,{"$set": attendance})
+                                        print(f"attendace_result: {attendace_result}")
+                                
+                                # if caption not in people:
+                                #     # Get the current date and time
+                                #     now = datetime.now()
+
+                                #     # Format the date as 'YYYY-MM-DD'
+                                #     formatted_date = now.strftime('%Y-%m-%d')
+
+                                #     # Format the time as 'HH:MM'
+                                #     formatted_time = now.strftime('%H:%M')
+                                #     attendance_url = os.getenv('ATTENDANCE_URL') + "/TxGeTimeAttendance/import"
+                                #     attendance_headers = {
+                                #         'accept': '*/*',
+                                #         'Content-Type': 'application/json-patch+json'
+                                #         }
+                                #     payload = json.dumps({
+                                #         "pid": caption,
+                                #         "deviceId": "FACE_RECOG_01",
+                                #         "attendanceDate": formatted_date,
+                                #         "startWorkTime": formatted_time,
+                                #         "getOffWorkTime": None
+                                #         })
+                                #     print(payload)
+                                #     await call_time_attendance_service(attendance_url,payload,attendance_headers)
+                                #     people.append(caption)
                                 
                             else:
                                 caption = "UN_KNOWN"
