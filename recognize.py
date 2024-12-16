@@ -409,8 +409,7 @@ async def recognize(detector, args):
                                         "pid": caption,
                                         "deviceId": "FACE_RECOG_01",
                                         "attendanceDate": formatted_date,
-                                        "startWorkTime": formatted_time,
-                                        "getOffWorkTime": formatted_time
+                                        "attendanceTime": formatted_time,
                                         })
                                     print(payload)
                                     await call_time_attendance_service(attendance_url,payload,attendance_headers)
